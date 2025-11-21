@@ -32,6 +32,10 @@ phases:
       - echo Installing Maven...
       - mvn --version
 
+      - echo Installing Trivy Scanner...
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - trivy --version
+
   pre_build:
     commands:
       - echo Logging into Amazon ECR...
@@ -49,6 +53,11 @@ phases:
       - mvn package
       - echo Building Docker Image...
       - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+
+      - echo Running Trivy Scan on Docker Image...
+      - trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE_REPO_NAME:$IMAGE_TAG
+
+      - echo Tagging Docker Image...
       - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
