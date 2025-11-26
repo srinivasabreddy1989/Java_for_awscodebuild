@@ -23,11 +23,13 @@ env:
   variables:
     IMAGE_REPO_NAME: "messageutil-repo"
     IMAGE_TAG: "latest"
+    SNYK_PARAM: "/snyk/apiToken"
 
 phases:
   install:
     runtime-versions:
       java: corretto17
+      nodejs: 18
     commands:
       - echo Installing Maven...
       - mvn --version
@@ -35,6 +37,16 @@ phases:
       - echo Installing Trivy Scanner...
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
       - trivy --version
+
+      - echo Installing Snyk CLI...
+      - npm install -g snyk
+      - snyk --version
+
+      - echo Retrieving Snyk API Token from SSM...
+      - export SNYK_TOKEN=$(aws ssm get-parameter --name "$SNYK_PARAM" --with-decryption --query "Parameter.Value" --output text)
+
+      - echo Authenticating Snyk...
+      - snyk auth $SNYK_TOKEN
 
   pre_build:
     commands:
@@ -51,11 +63,22 @@ phases:
       - mvn test
       - echo Building JAR...
       - mvn package
+
+      - echo Running Snyk SCA (Software Dependency Scan)...
+      - snyk test --severity-threshold=high || true
+
       - echo Building Docker Image...
       - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
 
       - echo Running Trivy Scan on Docker Image...
       - trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE_REPO_NAME:$IMAGE_TAG
+
+      - echo Running Snyk Container Scan...
+      - snyk container test $IMAGE_REPO_NAME:$IMAGE_TAG --severity-threshold=high || true
+
+      - echo Uploading results to Snyk Dashboard...
+      - snyk monitor
+      - snyk container monitor $IMAGE_REPO_NAME:$IMAGE_TAG
 
       - echo Tagging Docker Image...
       - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
