@@ -88,7 +88,11 @@ phases:
       - echo Pushing Docker Image to ECR...
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Build completed successfully!
+      - echo "Prepare deployment artifact"
+      - cp target/messageUtil-1.0.jar javaapp/app.jar
+      - zip -r deploy_bundle.zip appspec.yml scripts javaapp
+      - aws s3 cp deploy_bundle.zip s3://$CODEPIPELINE_SOURCE_ARTIFACT_BUCKET/$CODEBUILD_BUILD_ID-deploy_bundle.zip || true
 
 artifacts:
   files:
-    - target/messageUtil-1.0.jar
+    - deploy_bundle.zip
