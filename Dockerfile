@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk-jammy
+FROM amazoncorretto:17-alpine
 WORKDIR /app
 COPY target/messageUtil-1.0.jar app.jar
 EXPOSE 8080
