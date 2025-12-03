@@ -68,12 +68,7 @@ phases:
       - echo Running Trivy Scan on Docker Image...
       - trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE_REPO_NAME:$IMAGE_TAG
 
-      - echo Running Snyk Container Scan...
-      - snyk container test $IMAGE_REPO_NAME:$IMAGE_TAG --severity-threshold=high || true
-
-      - echo Uploading results to Snyk Dashboard...
-      - snyk monitor
-      - snyk container monitor $IMAGE_REPO_NAME:$IMAGE_TAG
+      
 
       - echo Tagging Docker Image...
       - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
