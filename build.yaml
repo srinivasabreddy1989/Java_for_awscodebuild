@@ -1,0 +1,19 @@
+
+ - echo Retrieving Snyk API Token from SSM...
+      # - export SNYK_TOKEN=$(aws ssm get-parameter --name "$SNYK_PARAM" --with-decryption --query "Parameter.Value" --output text)
+
+      - echo Authenticating Snyk...
+      #- snyk auth $SNYK_TOKEN
+
+
+        - echo "Running Snyk SCA (Software Dependency Scan)..."
+      # - snyk test --severity-threshold=high || true
+
+
+
+      - echo Running Snyk Container Scan...
+      - snyk container test $IMAGE_REPO_NAME:$IMAGE_TAG --severity-threshold=high || true
+
+      - echo Uploading results to Snyk Dashboard...
+      - snyk monitor
+      - snyk container monitor $IMAGE_REPO_NAME:$IMAGE_TAG

@@ -23,7 +23,6 @@ env:
   variables:
     IMAGE_REPO_NAME: "messageutil-repo"
     IMAGE_TAG: "latest"
-    SNYK_PARAM: "/snyk/apiToken"
 
 phases:
   install:
@@ -42,12 +41,9 @@ phases:
       - npm install -g snyk
       - snyk --version
 
-     
-
   pre_build:
     commands:
       - echo Logging into Amazon ECR...
-      - aws --version
       - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
       - REGION=$AWS_DEFAULT_REGION
       - REPOSITORY_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$IMAGE_REPO_NAME"
@@ -57,18 +53,15 @@ phases:
     commands:
       - echo Running Maven Tests...
       - mvn test
-      - echo Building JAR...
-      - mvn package
 
-    
+      - echo Packaging Application...
+      - mvn package
 
       - echo Building Docker Image...
       - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
 
-      - echo Running Trivy Scan on Docker Image...
+      - echo Running Trivy Scan...
       - trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE_REPO_NAME:$IMAGE_TAG
-
-      
 
       - echo Tagging Docker Image...
       - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
@@ -77,13 +70,15 @@ phases:
     commands:
       - echo Pushing Docker Image to ECR...
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Build completed successfully!
-      - echo "Prepare deployment artifact"
+
+      - echo Preparing artifacts for CodeDeploy...
       - mkdir -p javaapp
       - cp target/messageUtil-1.0.jar javaapp/app.jar
-      - zip -r deploy_bundle.zip appspec.yml scripts javaapp
-      - aws s3 cp deploy_bundle.zip s3://$CODEPIPELINE_SOURCE_ARTIFACT_BUCKET/$CODEBUILD_BUILD_ID-deploy_bundle.zip || true
+      - echo "Artifacts prepared successfully"
 
 artifacts:
   files:
-    - deploy_bundle.zip
+    - appspec.yml
+    - scripts/**/*
+    - javaapp/**/*
+
